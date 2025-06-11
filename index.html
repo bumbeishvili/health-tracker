@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Fitness Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.2.0/highcharts.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.2.0/modules/boost.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Configuration Form -->
+        <div id="configurationModal" class="config-modal">
+            <div class="config-modal-content">
+                <div class="config-header">
+                    <h2>🔧 Dashboard Configuration</h2>
+                    <p>Enter your data source URLs to get started with your personal fitness tracking</p>
+                </div>
+                <form id="configForm" class="config-form">
+                    <div class="config-field">
+                        <label for="dataSheetUrl">Data Sheet URL *</label>
+                        <input 
+                            type="url" 
+                            id="dataSheetUrl" 
+                            name="dataSheetUrl" 
+                            placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv"
+                            required
+                        >
+                        <small>Google Sheets CSV export URL containing your daily fitness data (weight, calories, macros, etc.)</small>
+                    </div>
+                    
+                    <div class="config-field">
+                        <label for="planMdUrl">Fitness Plan URL (Optional)</label>
+                        <input 
+                            type="url" 
+                            id="planMdUrl" 
+                            name="planMdUrl" 
+                            placeholder="https://gist.githubusercontent.com/.../plan.md"
+                        >
+                        <small>Markdown file URL with your personalized fitness and nutrition plan</small>
+                    </div>
+                    
+                    <div class="config-field">
+                        <label for="exerciseSheetUrl">Exercise Sheet URL (Optional)</label>
+                        <input 
+                            type="url" 
+                            id="exerciseSheetUrl" 
+                            name="exerciseSheetUrl" 
+                            placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+                        >
+                        <small>Google Sheets URL with your exercise routines and workout data</small>
+                    </div>
+                    
+                    <div class="config-actions">
+                        <button type="submit" class="config-btn-primary">
+                            🚀 Start Dashboard
+                        </button>
+                        <button type="button" id="useDefaultsBtn" class="config-btn-secondary">
+                            📊 Use Demo Data
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="config-footer">
+                    <button type="button" id="reconfigureBtn" class="config-btn-link" style="display: none;">
+                        ⚙️ Reconfigure URLs
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <header class="header">
+            <h1>🏋️ Fitness Dashboard</h1>
+            <p>Comprehensive health and fitness tracking</p>
+        </header>
+        
+        <main>
+            <!-- Add tooltip element -->
+            <div id="trackingTooltip" class="tracking-tooltip">
+                <div class="tracking-tooltip-title"></div>
+                <div class="tracking-tooltip-content"></div>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="timeRangeButtons">Time Range</label>
+                    <div class="time-range-buttons" id="timeRangeButtons">
+                        <button class="time-range-btn active" data-range="7" aria-pressed="true">7 Days</button>
+                        <button class="time-range-btn" data-range="14" aria-pressed="false">14 Days</button>
+                        <button class="time-range-btn" data-range="30" aria-pressed="false">30 Days</button>
+                        <button class="time-range-btn" data-range="90" aria-pressed="false">3 Months</button>
+                        <button class="time-range-btn" data-range="365" aria-pressed="false">1 Year</button>
+                        <button class="time-range-btn" data-range="all" aria-pressed="false">All Time</button>
+                    </div>
+                </div>
+                <div class="data-source-buttons">
+                    <a href="#" target="_blank" class="data-source-btn">📊 Data</a>
+                    <a href="#" target="_blank" class="data-source-btn">📝 Plan</a>
+                    <a href="#" target="_blank" class="data-source-btn">📥 CSV</a>
+                </div>
+                <div class="controls-right">
+                    <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+                    <button onclick="exportData()">📥 Export</button>
+                    <button id="configureBtn" class="config-btn">⚙️ Configure</button>
+                </div>
+            </div>
+            
+            <div id="loadingMessage" class="loading" role="status">
+                <div class="loading-spinner" aria-label="Loading data"></div>
+                Loading your fitness data...
+            </div>
+            
+            <div id="errorMessage" class="error-message-container" style="display: none;" role="alert">
+                <div>❌ Error loading data</div>
+                <p id="errorDetails" style="font-size: 0.9rem; margin-top: 5px;"></p>
+                <button onclick="loadData()" style="margin-top: 15px;">Try Again</button>
+            </div>
+
+            <div id="noDataMessage" class="no-data-container" style="display: none;" role="status">
+                No data available for the selected time range.
+            </div>
+            
+            <div id="dashboardContent" style="display: none;">
+                <!-- Daily Tracking Section -->
+                <div class="daily-tracking">
+                    <div class="section-header">
+                        <h2>Today's Tracking</h2>
+                        <div class="date" id="currentDate"></div>
+                    </div>
+                    <div class="tracking-grid">
+                        <!-- Body Metrics -->
+                        <div class="tracking-group">
+                            <h3>Body Metrics</h3>
+                            <div class="tracking-items">
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="weightStatus"></div>
+                                    <img src="icons/weight.svg" alt="Weight" class="tracking-icon">
+                                    <div class="tracking-label">Weight</div>
+                                    <div class="tracking-value" id="todayWeight">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="weightProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item highlight">
+                                    <div class="tracking-status" id="muscleStatus"></div>
+                                    <img src="icons/muscle.svg" alt="Muscle" class="tracking-icon">
+                                    <div class="tracking-label">Muscle Mass</div>
+                                    <div class="tracking-value" id="todayMuscle">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="muscleProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="boneMassStatus"></div>
+                                    <img src="icons/bone.svg" alt="Bone Mass" class="tracking-icon">
+                                    <div class="tracking-label">Bone Mass</div>
+                                    <div class="tracking-value" id="todayBoneMass">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="boneMassProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="visceralFatStatus"></div>
+                                    <img src="icons/visceral-fat.svg" alt="Visceral Fat" class="tracking-icon">
+                                    <div class="tracking-label">Visceral Fat</div>
+                                    <div class="tracking-value" id="todayVisceralFat">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="visceralFatProgress"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Body Composition -->
+                        <div class="tracking-group">
+                            <h3>Body Composition</h3>
+                            <div class="tracking-items">
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="proteinPercentageStatus"></div>
+                                    <img src="icons/protein-percentage.svg" alt="Protein %" class="tracking-icon">
+                                    <div class="tracking-label">Protein %</div>
+                                    <div class="tracking-value" id="todayProteinPercentage">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="proteinPercentageProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="waterPercentageStatus"></div>
+                                    <img src="icons/water.svg" alt="Water %" class="tracking-icon">
+                                    <div class="tracking-label">Water %</div>
+                                    <div class="tracking-value" id="todayWaterPercentage">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="waterPercentageProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item highlight">
+                                    <div class="tracking-status" id="bodyFatStatus"></div>
+                                    <img src="icons/fat.svg" alt="Body Fat %" class="tracking-icon">
+                                    <div class="tracking-label">Body Fat %</div>
+                                    <div class="tracking-value" id="todayBodyFat">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="bodyFatProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="basalMetabolismStatus"></div>
+                                    <img src="icons/bmr.svg" alt="Basal Metabolism" class="tracking-icon">
+                                    <div class="tracking-label">Basal Metabolism</div>
+                                    <div class="tracking-value" id="todayBasalMetabolism">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="basalMetabolismProgress"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Nutrition -->
+                        <div class="tracking-group">
+                            <h3>Nutrition</h3>
+                            <div class="tracking-items">
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="caloriesStatus"></div>
+                                    <img src="icons/calories.svg" alt="Calories" class="tracking-icon">
+                                    <div class="tracking-label">Calories</div>
+                                    <div class="tracking-value" id="todayCalories">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="caloriesProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item highlight">
+                                    <div class="tracking-status" id="proteinStatus"></div>
+                                    <img src="icons/protein.svg" alt="Protein" class="tracking-icon">
+                                    <div class="tracking-label">Protein</div>
+                                    <div class="tracking-value" id="todayProtein">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="proteinProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="fatsStatus"></div>
+                                    <img src="icons/fats.svg" alt="Fats" class="tracking-icon">
+                                    <div class="tracking-label">Fats</div>
+                                    <div class="tracking-value" id="todayFats">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="fatsProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="carbsStatus"></div>
+                                    <img src="icons/carbs.svg" alt="Carbs" class="tracking-icon">
+                                    <div class="tracking-label">Carbs</div>
+                                    <div class="tracking-value" id="todayCarbs">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="carbsProgress"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Activity -->
+                        <div class="tracking-group">
+                            <h3>Activity</h3>
+                            <div class="tracking-items">
+                                <div class="tracking-item highlight">
+                                    <div class="tracking-status" id="stepsStatus"></div>
+                                    <img src="icons/steps.svg" alt="Steps" class="tracking-icon">
+                                    <div class="tracking-label">Steps</div>
+                                    <div class="tracking-value" id="todaySteps">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="stepsProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="sleepStatus"></div>
+                                    <img src="icons/sleep.svg" alt="Sleep" class="tracking-icon">
+                                    <div class="tracking-label">Sleep</div>
+                                    <div class="tracking-value" id="todaySleep">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="sleepProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="waterIntakeStatus"></div>
+                                    <img src="icons/water-intake.svg" alt="Water Intake" class="tracking-icon">
+                                    <div class="tracking-label">Water Intake</div>
+                                    <div class="tracking-value" id="todayWaterIntake">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="waterIntakeProgress"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Calories -->
+                        <div class="tracking-group">
+                            <h3>Calorie Balance</h3>
+                            <div class="tracking-items">
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="bmrStatus"></div>
+                                    <img src="icons/bmr.svg" alt="BMR" class="tracking-icon">
+                                    <div class="tracking-label">BMR</div>
+                                    <div class="tracking-value" id="todayBMR">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="bmrProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item">
+                                    <div class="tracking-status" id="totalBurnStatus"></div>
+                                    <img src="icons/calories-burn.svg" alt="Total Burn" class="tracking-icon">
+                                    <div class="tracking-label">Total Burn</div>
+                                    <div class="tracking-value" id="todayTotalBurn">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="totalBurnProgress"></div>
+                                    </div>
+                                </div>
+                                <div class="tracking-item highlight">
+                                    <div class="tracking-status" id="deficitStatus"></div>
+                                    <img src="icons/deficit.svg" alt="Deficit" class="tracking-icon">
+                                    <div class="tracking-label">Deficit</div>
+                                    <div class="tracking-value" id="todayDeficit">--</div>
+                                    <div class="tracking-progress">
+                                        <div class="tracking-progress-bar" id="deficitProgress"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Metrics Row -->
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Weight Progress</div>
+                                <div class="card-subtitle">Current weight & trend</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="metric-large" id="currentWeight">-- kg</div>
+                            <div class="metric-row">
+                                <span class="metric-label">Weekly Rate</span>
+                                <span class="metric-value" id="weeklyRate">-- kg/week</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Total Change</span>
+                                <span class="metric-value" id="totalLoss">-- kg</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Daily Average</div>
+                                <div class="card-subtitle">Nutrition & activity</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="metric-row">
+                                <span class="metric-label">Calories</span>
+                                <span class="metric-value" id="avgCalories">--</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Protein</span>
+                                <span class="metric-value" id="avgProtein">--g</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Steps</span>
+                                <span class="metric-value" id="avgSteps">--</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Deficit</span>
+                                <span class="metric-value" id="avgDeficit">-- cal</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Goal Progress</div>
+                                <div class="card-subtitle">Protein target: <span id="proteinTargetDisplay">--</span>g</div>
+                            </div>
+                        </div>
+                        <div class="progress-ring-container">
+                            <div class="progress-ring">
+                                <div id="proteinProgressChart" style="position: relative; width: 120px; height: 120px;"></div>
+                                <div class="progress-text">
+                                    <div class="metric-medium" id="proteinPercent">0%</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-color-lighter);">Protein</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Activity Goal</div>
+                                <div class="card-subtitle">Steps target: <span id="stepsTargetDisplay">--</span></div>
+                            </div>
+                        </div>
+                        <div class="progress-ring-container">
+                            <div class="progress-ring">
+                                <div id="stepsProgressChart" style="position: relative; width: 120px; height: 120px;"></div>
+                                <div class="progress-text">
+                                    <div class="metric-medium" id="stepsPercent">0%</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-color-lighter);">Steps</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts Row -->
+                <div class="grid large-cards">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Weight Trend</div>
+                            <div class="card-subtitle">Daily weight measurements</div>
+                        </div>
+                        <div class="chart-container" id="weightChart"></div>
+                    </div>
+                </div>
+                
+                <div class="grid large-cards">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Macronutrients</div>
+                            <div class="card-subtitle">Protein, fat, carbs breakdown (kcal)</div>
+                        </div>
+                        <div class="chart-container" id="macroChart"></div>
+                    </div>
+                </div>
+                
+                <div class="grid large-cards">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Exercise Calories Burn</div>
+                            <div class="card-subtitle">Daily exercise calorie expenditure</div>
+                        </div>
+                        <div class="chart-container" id="exerciseChart"></div>
+                    </div>
+                </div>
+                
+                <div class="grid large-cards">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Calorie Balance</div>
+                            <div class="card-subtitle">Intake vs burn & deficit</div>
+                        </div>
+                        <div class="chart-container" id="deficitChart"></div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Theoretical Weight Impact of Calorie Deficit</div>
+                            <div class="card-subtitle">Cumulative weight change from deficit</div>
+                        </div>
+                        <div class="chart-container" id="weightLossDeficitChart"></div>
+                    </div>
+                </div>
+                
+                <!-- Fitness Plan Section -->
+                <div class="grid large-cards">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Fitness Plan</div>
+                            <div class="card-subtitle">Detailed workout and nutrition guide</div>
+                        </div>
+                        <div class="plan-content markdown-body" id="planContent">
+                            Loading plan...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
