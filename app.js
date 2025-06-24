@@ -560,7 +560,8 @@ function createCharts(data) {
 function createWeightChart(data) {
     const weightData = data.map(d => [d.date.getTime(), d.weight]);
     Highcharts.chart('weightChart', {
-        chart: { type: 'line', height: 250 },
+        chart: { type: 'line', height: 300 },
+        legend: { enabled: false },
         yAxis: { title: { text: 'Weight (kg)' } },
         series: [{
             name: 'Weight',
@@ -588,7 +589,8 @@ function createMacroChart(data) {
     const avgTotal = avgProtein + avgFat + avgCarbs;
     
     Highcharts.chart('macroChart', {
-        chart: { type: 'area', height: 250 },
+        chart: { type: 'area', height: 300 },
+        legend: { enabled: false },
         title: {
             text: `Avg: ${avgTotal.toLocaleString()} kcal (P: ${avgProtein}, F: ${avgFat}, C: ${avgCarbs})`,
             align: 'left',
@@ -647,8 +649,9 @@ function createExerciseChart(data) {
     Highcharts.chart('exerciseChart', {
         chart: { 
             type: 'column',
-            height: 250
+            height: 300
         },
+        legend: { enabled: false },
         title: {
             text: `Average: ${avgExercise.toLocaleString()} cal`,
             align: 'left',
@@ -683,7 +686,8 @@ function createDeficitChart(data) {
         Math.round(deficitData.reduce((sum, d) => sum + d[1], 0) / deficitData.length) : 0;
     
     Highcharts.chart('deficitChart', {
-        chart: { type: 'column', height: 250 },
+        chart: { type: 'column', height: 300 },
+        legend: { enabled: false },
         title: {
             text: `Average: ${Math.abs(avgDeficit).toLocaleString()} cal ${avgDeficit >= 0 ? 'deficit' : 'surplus'}`,
             align: 'left',
@@ -730,7 +734,8 @@ function createWeightLossDeficitChart(data) {
     const maxProjectedWeightChange = Math.max(0, ...seriesData.map(p => p.y));
     
     Highcharts.chart('weightLossDeficitChart', {
-        chart: { height: 250 },
+        chart: { height: 300 },
+        legend: { enabled: false },
         xAxis: { labels: { rotation: -30, align: 'right' } },
         yAxis: [{
             title: {

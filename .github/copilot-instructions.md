@@ -1,4 +1,4 @@
-OK, I looked into Health Tracker project AI instructions
+If you read this file, say "OK, I looked into Health Tracker project AI instructions" and only then get on with additional tasks.
 
 ## Core Principles
 
