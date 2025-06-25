@@ -540,7 +540,7 @@ function updateMetrics(data) {
 
 // Chart Creation Functions
 function createCharts(data) {
-    ['weightChart', 'macroChart', 'deficitChart', 'weightLossDeficitChart', 'exerciseChart'].forEach(id => {
+    ['weightChart', 'macroChart', 'weightLossDeficitChart'].forEach(id => {
         const container = document.getElementById(id);
         if (container) {
             const chartIndex = Highcharts.attr(container, 'data-highcharts-chart');
@@ -552,8 +552,6 @@ function createCharts(data) {
     });
     createWeightChart(data);
     createMacroChart(data);
-    createExerciseChart(data);
-    createDeficitChart(data);
     createWeightLossDeficitChart(data);
 }
 
@@ -635,85 +633,6 @@ function createMacroChart(data) {
                 return `<span style="color:${this.series.color}">●</span> ${this.series.name}: <b>${kcal.toFixed(0)} kcal</b> (${grams.toFixed(0)}g)<br/>`;
             },
             shared: false
-        }
-    });
-}
-
-function createExerciseChart(data) {
-    const exerciseData = data.map(d => [d.date.getTime(), d.exerciseCalories]);
-    
-    // Calculate average
-    const avgExercise = exerciseData.length > 0 ? 
-        Math.round(exerciseData.reduce((sum, d) => sum + d[1], 0) / exerciseData.length) : 0;
-    
-    Highcharts.chart('exerciseChart', {
-        chart: { 
-            type: 'column',
-            height: 300
-        },
-        legend: { enabled: false },
-        title: {
-            text: `Average: ${avgExercise.toLocaleString()} cal`,
-            align: 'left',
-            style: { fontSize: '0.9rem', color: 'var(--text-color-lighter)' }
-        },
-        yAxis: {
-            title: { text: 'cal' },
-            min: 0,
-            labels: {
-                formatter: function() {
-                    return this.value.toLocaleString();
-                }
-            }
-        },
-        series: [{
-            name: 'Exercise Calories',
-            data: exerciseData,
-            color: 'var(--purple-500)',
-            borderRadius: 3
-        }],
-        tooltip: {
-            pointFormat: '<span style="color:{series.color}">●</span> {series.name}: <b>{point.y:,.0f} cal</b><br/>'
-        }
-    });
-}
-
-function createDeficitChart(data) {
-    const deficitData = data.filter(d => d.deficit !== null).map(d => [d.date.getTime(), d.deficit]);
-    
-    // Calculate average
-    const avgDeficit = deficitData.length > 0 ? 
-        Math.round(deficitData.reduce((sum, d) => sum + d[1], 0) / deficitData.length) : 0;
-    
-    Highcharts.chart('deficitChart', {
-        chart: { type: 'column', height: 300 },
-        legend: { enabled: false },
-        title: {
-            text: `Average: ${Math.abs(avgDeficit).toLocaleString()} cal ${avgDeficit >= 0 ? 'deficit' : 'surplus'}`,
-            align: 'left',
-            style: { fontSize: '0.9rem', color: 'var(--text-color-lighter)' }
-        },
-        yAxis: {
-            title: { text: 'cal' },
-            plotLines: [{ value: 0, color: 'var(--border-color-medium)', width: 2 }],
-            labels: {
-                formatter: function() {
-                    return this.value.toLocaleString();
-                }
-            }
-        },
-        series: [{
-            name: 'Deficit/Surplus',
-            data: deficitData,
-            colorByPoint: true,
-            colors: deficitData.map(d => d[1] >= 0 ? 'var(--green-500)' : 'var(--red-500)'),
-            borderRadius: 3
-        }],
-        tooltip: {
-            formatter: function() {
-                const status = this.y >= 0 ? 'Deficit' : 'Surplus';
-                return `${this.series.name}: <b>${Math.abs(this.y).toLocaleString()} cal ${status}</b>`;
-            }
         }
     });
 }
@@ -871,6 +790,10 @@ function createTooltipChart(data, metric) {
     const chartData = historicalData.map(d => [d.date.getTime(), d.value]);
     const unit = getMetricUnit(metric);
     
+    // Determine chart type based on metric
+    const barChartMetrics = ['calories', 'protein', 'fats', 'carbs', 'steps', 'sleep', 'waterIntake', 'totalBurn', 'deficit'];
+    const chartType = barChartMetrics.includes(metric) ? 'column' : 'line';
+    
     // Destroy existing chart if any
     const chartContainer = document.getElementById('tooltipChart');
     const existingChart = Highcharts.charts[Highcharts.attr(chartContainer, 'data-highcharts-chart')];
@@ -881,7 +804,7 @@ function createTooltipChart(data, metric) {
     // Create new chart
     Highcharts.chart('tooltipChart', {
         chart: {
-            type: 'line',
+            type: chartType,
             height: 150,
             margin: [10, 35, 30, 45],
             backgroundColor: 'transparent',
@@ -926,7 +849,9 @@ function createTooltipChart(data, metric) {
                 x: -5
             },
             lineWidth: 1,
-            lineColor: 'var(--border-color-medium)'
+            lineColor: 'var(--border-color-medium)',
+            min: (chartType === 'column' && metric !== 'deficit') ? 0 : undefined,
+            plotLines: metric === 'deficit' ? [{ value: 0, color: 'var(--border-color-medium)', width: 1 }] : undefined
         },
         legend: { enabled: false },
         tooltip: {
@@ -944,29 +869,56 @@ function createTooltipChart(data, metric) {
             series: {
                 animation: false,
                 marker: {
-                    enabled: true,
+                    enabled: chartType === 'line',
                     radius: 3
                 }
+            },
+            column: {
+                borderRadius: 2,
+                pointPadding: 0.1,
+                groupPadding: 0.05
             }
         },
         series: [{
             name: metric,
             data: chartData,
-            color: getMetricColor(metric),
-            lineWidth: 2
+            color: metric === 'deficit' ? undefined : getMetricColor(metric), // Let deficit use colorByPoint
+            colors: metric === 'deficit' ? chartData.map(d => d[1] >= 0 ? 'var(--green-500)' : 'var(--red-500)') : undefined,
+            colorByPoint: metric === 'deficit',
+            lineWidth: chartType === 'line' ? 2 : undefined
         }]
     });
 }
 
 function getMetricColor(metric) {
     const colors = {
+        // Body Metrics (Line charts - cooler colors)
         weight: 'var(--red-500)',
         muscle: 'var(--green-500)',
-        boneMass: 'var(--blue-500)',
-        calories: 'var(--yellow-500)',
+        boneMass: '#4299e1', // Custom blue
+        visceralFat: '#ef4444', // Red variant
+        
+        // Body Composition (Line charts)
+        proteinPercentage: 'var(--green-500)',
+        waterPercentage: '#3182ce', // Blue variant
+        bodyFat: '#f59e0b', // Orange
+        basalMetabolism: '#8b5cf6', // Purple variant
+        
+        // Nutrition (Bar charts - warmer colors)
+        calories: '#f59e0b', // Orange/yellow
         protein: 'var(--green-500)',
+        fats: '#ef4444', // Red
+        carbs: '#f59e0b', // Yellow/orange
+        
+        // Activity (Bar charts)
         steps: 'var(--purple-500)',
-        deficit: 'var(--blue-500)'
+        sleep: '#3182ce', // Blue
+        waterIntake: '#06b6d4', // Cyan
+        
+        // Calorie Balance (Mixed)
+        bmr: 'var(--purple-500)', // Line chart
+        totalBurn: '#f97316', // Orange (Bar chart)
+        deficit: 'var(--blue-500)' // Bar chart
     };
     return colors[metric] || 'var(--blue-500)';
 }
@@ -1152,7 +1104,7 @@ function getHistoricalData(metric) {
         'waterIntake': 'waterIntake',
         
         // Calorie Balance
-        'bmr': 'bmr',
+        'bmr': 'basalMetabolism', // Fixed: BMR should map to basalMetabolism which gets "Basal Metabolism (kcal)"
         'totalBurn': 'totalCaloriesBurn',
         'deficit': 'deficit'
     };
@@ -1186,7 +1138,7 @@ function getMetricUnit(metric) {
         'carbs': 'g',
         'steps': '',
         'sleep': 'hrs',
-        'waterIntake': 'ml',
+        'waterIntake': 'L',
         'bmr': 'cal',
         'totalBurn': 'cal',
         'deficit': 'cal'
