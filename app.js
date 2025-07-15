@@ -316,6 +316,8 @@ async function loadData() {
         const rawData = d3.csvParse(csvString);
         
         currentData = processData(rawData);
+
+        console.log('data',{rawData,processData})
         
         if (currentData.length === 0) {
             showError('No valid data found in the spreadsheet after processing.');
