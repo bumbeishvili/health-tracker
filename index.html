@@ -421,16 +421,32 @@
                 <div class="grid large-cards">
                     <div class="card">
                         <div class="card-header">
-                            <div class="card-title">Weight Trend</div>
-                            <div class="card-subtitle">Daily weight measurements</div>
+                            <div>
+                                <div class="card-title">Weight Trend</div>
+                                <div class="card-subtitle">Daily weight measurements</div>
+                            </div>
+                            <div class="chart-controls">
+                                <label class="chart-checkbox">
+                                    <input type="checkbox" id="weightMovingAverage">
+                                    2-week moving average
+                                </label>
+                            </div>
                         </div>
                         <div class="chart-container" id="weightChart"></div>
                     </div>
                     
                     <div class="card">
                         <div class="card-header">
-                            <div class="card-title">Macronutrients</div>
-                            <div class="card-subtitle">Protein, fat, carbs breakdown (kcal)</div>
+                            <div>
+                                <div class="card-title">Macronutrients</div>
+                                <div class="card-subtitle">Protein, fat, carbs breakdown (kcal)</div>
+                            </div>
+                            <div class="chart-controls">
+                                <label class="chart-checkbox">
+                                    <input type="checkbox" id="macroMovingAverage">
+                                    2-week moving average
+                                </label>
+                            </div>
                         </div>
                         <div class="chart-container" id="macroChart"></div>
                     </div>

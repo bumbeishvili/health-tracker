@@ -361,10 +361,12 @@ function updateDashboard() {
     if (filteredData.length === 0) {
         showNoDataMessage();
         resetDailyTracking();
+        updateChartControlsVisibility(filteredData);
         return;
     }
     
     showDashboard();
+    updateChartControlsVisibility(filteredData);
     updateDailyTracking(filteredData[filteredData.length - 1]);
     updateMetrics(filteredData);
     createCharts(filteredData);
@@ -557,19 +559,52 @@ function createCharts(data) {
     createWeightLossDeficitChart(data);
 }
 
+// Calculate moving average for data series
+function calculateMovingAverage(data, windowSize) {
+    if (data.length < windowSize) return [];
+    
+    const result = [];
+    for (let i = windowSize - 1; i < data.length; i++) {
+        const window = data.slice(i - windowSize + 1, i + 1);
+        const sum = window.reduce((acc, point) => acc + point[1], 0);
+        const average = sum / windowSize;
+        result.push([data[i][0], average]); // Keep the same timestamp as the last point in window
+    }
+    return result;
+}
+
 function createWeightChart(data) {
     const weightData = data.map(d => [d.date.getTime(), d.weight]);
-    Highcharts.chart('weightChart', {
-        chart: { type: 'line', height: 300 },
-        legend: { enabled: false },
-        yAxis: { title: { text: 'Weight (kg)' } },
-        series: [{
+    const useMovingAverage = document.getElementById('weightMovingAverage').checked && data.length > 14;
+    
+    let series = [];
+    
+    if (useMovingAverage) {
+        // Show moving average instead of original data
+        const movingAverageData = calculateMovingAverage(weightData, 14); // 2 weeks = 14 days
+        series.push({
+            name: '2-Week Moving Average',
+            data: movingAverageData,
+            color: 'var(--red-500)',
+            lineWidth: 3,
+            marker: { radius: 4, fillColor: 'var(--red-500)' }
+        });
+    } else {
+        // Show original data
+        series.push({
             name: 'Weight',
             data: weightData,
             color: 'var(--red-500)',
             lineWidth: 3,
             marker: { radius: 4, fillColor: 'var(--red-500)' }
-        }],
+        });
+    }
+    
+    Highcharts.chart('weightChart', {
+        chart: { type: 'line', height: 300 },
+        legend: { enabled: false },
+        yAxis: { title: { text: 'Weight (kg)' } },
+        series: series,
         tooltip: {
             pointFormat: '<span style="color:{series.color}">●</span> {series.name}: <b>{point.y:.1f} kg</b><br/>'
         }
@@ -582,17 +617,44 @@ function createMacroChart(data) {
     const fatData = validData.map(d => [d.date.getTime(), d.fat * 9]);
     const carbsData = validData.map(d => [d.date.getTime(), d.carbs * 4]);
     
-    // Calculate averages
-    const avgProtein = proteinData.length > 0 ? Math.round(proteinData.reduce((sum, d) => sum + d[1], 0) / proteinData.length) : 0;
-    const avgFat = fatData.length > 0 ? Math.round(fatData.reduce((sum, d) => sum + d[1], 0) / fatData.length) : 0;
-    const avgCarbs = carbsData.length > 0 ? Math.round(carbsData.reduce((sum, d) => sum + d[1], 0) / carbsData.length) : 0;
-    const avgTotal = avgProtein + avgFat + avgCarbs;
+    const useMovingAverage = document.getElementById('macroMovingAverage').checked && validData.length > 14;
+    
+    let seriesData = {
+        protein: proteinData,
+        fat: fatData,
+        carbs: carbsData
+    };
+    
+    let avgText = '';
+    
+    if (useMovingAverage) {
+        // Calculate moving averages
+        seriesData.protein = calculateMovingAverage(proteinData, 14);
+        seriesData.fat = calculateMovingAverage(fatData, 14);
+        seriesData.carbs = calculateMovingAverage(carbsData, 14);
+        
+        // Calculate averages for moving average data
+        const avgProtein = seriesData.protein.length > 0 ? Math.round(seriesData.protein.reduce((sum, d) => sum + d[1], 0) / seriesData.protein.length) : 0;
+        const avgFat = seriesData.fat.length > 0 ? Math.round(seriesData.fat.reduce((sum, d) => sum + d[1], 0) / seriesData.fat.length) : 0;
+        const avgCarbs = seriesData.carbs.length > 0 ? Math.round(seriesData.carbs.reduce((sum, d) => sum + d[1], 0) / seriesData.carbs.length) : 0;
+        const avgTotal = avgProtein + avgFat + avgCarbs;
+        
+        avgText = `2-Week MA Avg: ${avgTotal.toLocaleString()} kcal (P: ${avgProtein}, F: ${avgFat}, C: ${avgCarbs})`;
+    } else {
+        // Calculate averages for original data
+        const avgProtein = proteinData.length > 0 ? Math.round(proteinData.reduce((sum, d) => sum + d[1], 0) / proteinData.length) : 0;
+        const avgFat = fatData.length > 0 ? Math.round(fatData.reduce((sum, d) => sum + d[1], 0) / fatData.length) : 0;
+        const avgCarbs = carbsData.length > 0 ? Math.round(carbsData.reduce((sum, d) => sum + d[1], 0) / carbsData.length) : 0;
+        const avgTotal = avgProtein + avgFat + avgCarbs;
+        
+        avgText = `Avg: ${avgTotal.toLocaleString()} kcal (P: ${avgProtein}, F: ${avgFat}, C: ${avgCarbs})`;
+    }
     
     Highcharts.chart('macroChart', {
         chart: { type: 'area', height: 300 },
         legend: { enabled: false },
         title: {
-            text: `Avg: ${avgTotal.toLocaleString()} kcal (P: ${avgProtein}, F: ${avgFat}, C: ${avgCarbs})`,
+            text: avgText,
             align: 'left',
             style: { fontSize: '0.9rem', color: 'var(--text-color-lighter)' }
         },
@@ -611,18 +673,18 @@ function createMacroChart(data) {
             }
         },
         series: [{
-            name: 'Protein',
-            data: proteinData,
+            name: useMovingAverage ? 'Protein (2-Week MA)' : 'Protein',
+            data: seriesData.protein,
             color: 'var(--green-500)',
             fillOpacity: 0.7
         }, {
-            name: 'Fat',
-            data: fatData,
+            name: useMovingAverage ? 'Fat (2-Week MA)' : 'Fat',
+            data: seriesData.fat,
             color: 'var(--red-500)',
             fillOpacity: 0.7
         }, {
-            name: 'Carbs',
-            data: carbsData,
+            name: useMovingAverage ? 'Carbs (2-Week MA)' : 'Carbs',
+            data: seriesData.carbs,
             color: 'var(--yellow-500)',
             fillOpacity: 0.7
         }],
@@ -630,8 +692,8 @@ function createMacroChart(data) {
             pointFormatter: function() {
                 const kcal = this.y;
                 let grams = 0;
-                if (this.series.name === 'Protein' || this.series.name === 'Carbs') grams = kcal / 4;
-                else if (this.series.name === 'Fat') grams = kcal / 9;
+                if (this.series.name.includes('Protein') || this.series.name.includes('Carbs')) grams = kcal / 4;
+                else if (this.series.name.includes('Fat')) grams = kcal / 9;
                 return `<span style="color:${this.series.color}">●</span> ${this.series.name}: <b>${kcal.toFixed(0)} kcal</b> (${grams.toFixed(0)}g)<br/>`;
             },
             shared: false
@@ -1269,7 +1331,56 @@ function initializeDashboard() {
     updateDataSourceButtons();
     loadData();
     setupTimeRangeButtons();
+    setupChartControls();
     loadFitnessPlan();
+}
+
+function setupChartControls() {
+    // Set up event listeners for moving average checkboxes
+    const weightCheckbox = document.getElementById('weightMovingAverage');
+    const macroCheckbox = document.getElementById('macroMovingAverage');
+    
+    if (weightCheckbox) {
+        weightCheckbox.addEventListener('change', () => {
+            if (currentData && currentData.length > 0) {
+                const filteredData = getFilteredData();
+                createWeightChart(filteredData);
+            }
+        });
+    }
+    
+    if (macroCheckbox) {
+        macroCheckbox.addEventListener('change', () => {
+            if (currentData && currentData.length > 0) {
+                const filteredData = getFilteredData();
+                createMacroChart(filteredData);
+            }
+        });
+    }
+}
+
+function updateChartControlsVisibility(data) {
+    const weightCheckboxContainer = document.querySelector('#weightMovingAverage').closest('.chart-controls');
+    const macroCheckboxContainer = document.querySelector('#macroMovingAverage').closest('.chart-controls');
+    
+    // Show/hide based on whether we have enough data for meaningful moving averages
+    const hasEnoughData = data && data.length > 14;
+    
+    if (weightCheckboxContainer) {
+        weightCheckboxContainer.style.display = hasEnoughData ? 'flex' : 'none';
+    }
+    
+    if (macroCheckboxContainer) {
+        macroCheckboxContainer.style.display = hasEnoughData ? 'flex' : 'none';
+    }
+    
+    // Reset checkboxes if not enough data
+    if (!hasEnoughData) {
+        const weightCheckbox = document.getElementById('weightMovingAverage');
+        const macroCheckbox = document.getElementById('macroMovingAverage');
+        if (weightCheckbox) weightCheckbox.checked = false;
+        if (macroCheckbox) macroCheckbox.checked = false;
+    }
 }
 
 function checkConfigAndStart() {
