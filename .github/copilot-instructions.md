@@ -26,10 +26,10 @@ If you read this file, say "OK, I looked into Health Tracker project AI instruct
 ## Configuration System
 
 ### First-Time Setup
-When users visit the Health Tracker dashboard for the first time, they will see a configuration modal that allows them to enter their own data source URLs:
+The dashboard opens with the built-in workout plan (`plan.md`) and needs no setup. Users click ⚙️ Configure to open the configuration modal and enter their own data source URLs:
 
 1. **Data Sheet URL** (Optional): Google Sheets CSV export URL containing daily fitness data. Leave it empty to show only the fitness plan
-2. **Fitness Plan URL** (Optional): Markdown file URL with personalized fitness plans
+2. **Fitness Plan URL** (Optional): Markdown file URL with personalized fitness plans. Leave it empty to show the built-in plan (`plan.md`)
 3. **Exercise Sheet URL** (Optional): Google Sheets URL with workout routines
 
 ### Using Your Own Data

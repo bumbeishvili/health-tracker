@@ -40,7 +40,7 @@
                             name="planMdUrl" 
                             placeholder="https://gist.githubusercontent.com/.../plan.md"
                         >
-                        <small>Markdown file URL with your personalized fitness and nutrition plan</small>
+                        <small>Markdown file URL with your personalized fitness and nutrition plan. Leave empty to show the built-in workout plan.</small>
                     </div>
                     
                     <div class="config-field">
@@ -85,7 +85,7 @@
             </div>
             
             <div class="controls">
-                <div class="control-group">
+                <div class="control-group needs-data-sheet">
                     <label for="timeRangeButtons">Time Range</label>
                     <div class="time-range-buttons" id="timeRangeButtons">
                         <button class="time-range-btn active" data-range="7" aria-pressed="true">7 Days</button>
@@ -102,8 +102,8 @@
                     <a href="#" target="_blank" class="data-source-btn">📥 CSV</a>
                 </div>
                 <div class="controls-right">
-                    <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
-                    <button onclick="exportData()">📥 Export</button>
+                    <button class="refresh-btn needs-data-sheet" onclick="loadData()">🔄 Refresh</button>
+                    <button class="needs-data-sheet" onclick="exportData()">📥 Export</button>
                     <button id="configureBtn" class="config-btn">⚙️ Configure</button>
                 </div>
             </div>

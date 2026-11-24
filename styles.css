@@ -124,6 +124,11 @@ body {
     gap: 8px;
 }
 
+/* Plan-only view: controls that act on the data sheet are hidden while none is connected */
+.controls.no-data-sheet .needs-data-sheet {
+    display: none;
+}
+
 .time-range-btn {
     padding: 8px 16px;
     border: 2px solid var(--border-color-medium);
@@ -457,6 +462,12 @@ button:not(.time-range-btn):hover {
 }
 
 /* Markdown Content Styles */
+/* A grid item is at least as wide as its content by default. Letting the plan card shrink
+   keeps it on screen on phones, so wide tables scroll inside .plan-content instead. */
+#planSection .card {
+    min-width: 0;
+}
+
 .plan-content {
     padding: 20px 0;
     font-size: 0.95rem;

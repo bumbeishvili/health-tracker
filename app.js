@@ -2,9 +2,13 @@
 
 // Configuration Management
 const CONFIG_STORAGE_KEY = 'fitness_dashboard_config';
+// Workout plan bundled with the site. It shows when no plan URL is configured,
+// so the exercises are visible without any setup.
+const BUNDLED_PLAN_FILE = 'plan.md';
 const DEFAULT_CONFIG = {
     dataSheetUrl: '',
-    planMdUrl: '',
+    // Resolved against the page so it is a full URL, like the ones entered in the config form
+    planMdUrl: new URL(BUNDLED_PLAN_FILE, document.baseURI).href,
     exerciseSheetUrl: ''
 };
 
@@ -59,7 +63,7 @@ function getExerciseSheetUrl() {
     return config ? config.exerciseSheetUrl : DEFAULT_CONFIG.exerciseSheetUrl;
 }
 
-// The data sheet is optional: without one the dashboard stays empty and only the fitness plan shows
+// The data sheet is optional: without one the page is plan-only and shows just the fitness plan
 function hasDataSheet() {
     return Boolean(getDataSheetUrl());
 }
@@ -69,7 +73,6 @@ let currentData = [];
 let selectedTimeRange = '7';
 const PROTEIN_TARGET_GRAMS = 170;
 const STEPS_TARGET = 8000;
-const NO_DATA_SHEET_MESSAGE = 'No data sheet connected. Use ⚙️ Configure to add one.';
 
 // Add these constants at the top with other constants
 const BASE_METRIC_RANGES = {
@@ -236,6 +239,14 @@ function hideNoDataMessage() {
     document.getElementById('noDataMessage').style.display = 'none';
 }
 
+// Plan-only state: no data sheet is connected, so the data area stays empty and the plan card shows alone
+function hideDataArea() {
+    document.getElementById('loadingMessage').style.display = 'none';
+    document.getElementById('errorMessage').style.display = 'none';
+    document.getElementById('dashboardContent').style.display = 'none';
+    document.getElementById('noDataMessage').style.display = 'none';
+}
+
 function getFilteredData() {
     if (selectedTimeRange === 'all') return currentData;
     
@@ -304,7 +315,7 @@ function createProgressChart(containerId, percentage, color) {
 // Data Loading and Chart Updates
 async function loadData() {
     if (!hasDataSheet()) {
-        // Nothing to fetch. The dashboard shows its empty state and the fitness plan loads on its own.
+        // Nothing to fetch. The data area is cleared and the fitness plan loads on its own.
         currentData = [];
         updateDashboard();
         return;
@@ -375,7 +386,7 @@ function updateDashboard() {
         if (hasDataSheet()) {
             showNoDataMessage();
         } else {
-            showNoDataMessage(NO_DATA_SHEET_MESSAGE);
+            hideDataArea();
         }
         resetDailyTracking();
         updateChartControlsVisibility(filteredData);
@@ -1283,13 +1294,6 @@ function setupConfigurationHandlers() {
             exerciseSheetUrl: formData.get('exerciseSheetUrl').trim() || DEFAULT_CONFIG.exerciseSheetUrl
         };
         
-        // The dashboard needs something to show: a data sheet, a fitness plan, or both
-        if (!config.dataSheetUrl && !config.planMdUrl) {
-            form.classList.remove('loading');
-            alert('Enter a Data Sheet URL or a Fitness Plan URL!');
-            return;
-        }
-        
         // Basic URL validation
         try {
             if (config.dataSheetUrl) new URL(config.dataSheetUrl);
@@ -1346,6 +1350,7 @@ function setupConfigurationHandlers() {
 
 function initializeDashboard() {
     updateDataSourceButtons();
+    updateDataControlsVisibility();
     loadData();
     setupTimeRangeButtons();
     setupChartControls();
@@ -1401,11 +1406,11 @@ function updateChartControlsVisibility(data) {
 }
 
 function checkConfigAndStart() {
-    if (hasConfig()) {
-        // Configuration exists, start dashboard
+    if (hasConfig() || getPlanMdUrl()) {
+        // Configuration exists, or the bundled plan can show without any setup: start dashboard
         initializeDashboard();
     } else {
-        // No configuration, show config modal
+        // No configuration and nothing to show, show config modal
         showConfigModal();
     }
 }
@@ -1530,16 +1535,23 @@ async function loadFitnessPlan() {
 }
 
 function updateDataSourceButtons() {
-    const config = getConfig();
-    if (!config) return;
-    
+    // The getters fall back to the defaults, so the buttons also work before any configuration is saved
+    const urls = [getExerciseSheetUrl(), getPlanMdUrl(), getDataSheetUrl()]; // Data sheet, Plan, CSV
+
     // Update the href attributes of data source buttons
     const dataButtons = document.querySelectorAll('.data-source-btn');
     if (dataButtons.length >= 3) {
-        dataButtons[0].href = config.exerciseSheetUrl; // Data sheet
-        dataButtons[1].href = config.planMdUrl; // Plan
-        dataButtons[2].href = config.dataSheetUrl; // CSV
+        urls.forEach((url, index) => {
+            dataButtons[index].href = url;
+            // A button with no URL behind it would only reopen this page, so it is hidden
+            dataButtons[index].style.display = url ? '' : 'none';
+        });
     }
+}
+
+// Plan-only view: controls that act on the data sheet are hidden while none is connected
+function updateDataControlsVisibility() {
+    document.querySelector('.controls').classList.toggle('no-data-sheet', !hasDataSheet());
 }
 
 // Clear configuration (useful for development/testing)

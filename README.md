@@ -13,7 +13,7 @@ A comprehensive fitness and health tracking dashboard that visualizes your perso
 
 ## Getting Started
 
-1. **First Visit**: The app will show a configuration modal where you can enter your data source URLs
+1. **First Visit**: The app shows the built-in workout plan (`plan.md`). Click ⚙️ Configure to enter your data source URLs
 2. **Use Demo Data**: Click "📊 Use Demo Data" to try the dashboard with sample data
 3. **Configure Your Data**: Enter your Google Sheets CSV export URL to use your own fitness data
 4. **Start Tracking**: The dashboard will load and display your personalized fitness metrics
@@ -21,10 +21,10 @@ A comprehensive fitness and health tracking dashboard that visualizes your perso
 ## Configuration
 
 ### First-Time Setup
-When you visit the Health Tracker dashboard for the first time, you will see a configuration modal that allows you to enter your own data source URLs:
+The dashboard opens with the built-in workout plan and needs no setup. Click ⚙️ Configure to open the configuration modal and enter your own data source URLs:
 
 1. **Data Sheet URL** (Optional): Google Sheets CSV export URL containing daily fitness data. Leave it empty to show only the fitness plan
-2. **Fitness Plan URL** (Optional): Markdown file URL with personalized fitness plans
+2. **Fitness Plan URL** (Optional): Markdown file URL with personalized fitness plans. Leave it empty to show the built-in plan (`plan.md`)
 3. **Exercise Sheet URL** (Optional): Google Sheets URL with workout routines
 
 ### Using Your Own Data
