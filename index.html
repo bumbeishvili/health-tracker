@@ -22,15 +22,14 @@
                 </div>
                 <form id="configForm" class="config-form">
                     <div class="config-field">
-                        <label for="dataSheetUrl">Data Sheet URL *</label>
+                        <label for="dataSheetUrl">Data Sheet URL (Optional)</label>
                         <input 
                             type="url" 
                             id="dataSheetUrl" 
                             name="dataSheetUrl" 
                             placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv"
-                            required
                         >
-                        <small>Google Sheets CSV export URL containing your daily fitness data (weight, calories, macros, etc.)</small>
+                        <small>Google Sheets CSV export URL containing your daily fitness data (weight, calories, macros, etc.). Leave empty to show only your fitness plan.</small>
                     </div>
                     
                     <div class="config-field">
@@ -463,17 +462,17 @@
                         <div class="chart-container" id="weightLossDeficitChart"></div>
                     </div>
                 </div>
-                
-                <!-- Fitness Plan Section -->
-                <div class="grid large-cards">
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title">Fitness Plan</div>
-                            <div class="card-subtitle">Detailed workout and nutrition guide</div>
-                        </div>
-                        <div class="plan-content markdown-body" id="planContent">
-                            Loading plan...
-                        </div>
+            </div>
+
+            <!-- Fitness Plan Section: outside dashboardContent so it shows without a data sheet -->
+            <div class="grid large-cards" id="planSection" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Fitness Plan</div>
+                        <div class="card-subtitle">Detailed workout and nutrition guide</div>
+                    </div>
+                    <div class="plan-content markdown-body" id="planContent">
+                        Loading plan...
                     </div>
                 </div>
             </div>

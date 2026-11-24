@@ -59,11 +59,17 @@ function getExerciseSheetUrl() {
     return config ? config.exerciseSheetUrl : DEFAULT_CONFIG.exerciseSheetUrl;
 }
 
+// The data sheet is optional: without one the dashboard stays empty and only the fitness plan shows
+function hasDataSheet() {
+    return Boolean(getDataSheetUrl());
+}
+
 // Global Variables
 let currentData = [];
 let selectedTimeRange = '7';
 const PROTEIN_TARGET_GRAMS = 170;
 const STEPS_TARGET = 8000;
+const NO_DATA_SHEET_MESSAGE = 'No data sheet connected. Use ⚙️ Configure to add one.';
 
 // Add these constants at the top with other constants
 const BASE_METRIC_RANGES = {
@@ -297,6 +303,13 @@ function createProgressChart(containerId, percentage, color) {
 
 // Data Loading and Chart Updates
 async function loadData() {
+    if (!hasDataSheet()) {
+        // Nothing to fetch. The dashboard shows its empty state and the fitness plan loads on its own.
+        currentData = [];
+        updateDashboard();
+        return;
+    }
+
     showLoading();
     hideNoDataMessage();
     
@@ -359,7 +372,11 @@ function updateDashboard() {
     const filteredData = getFilteredData();
     
     if (filteredData.length === 0) {
-        showNoDataMessage();
+        if (hasDataSheet()) {
+            showNoDataMessage();
+        } else {
+            showNoDataMessage(NO_DATA_SHEET_MESSAGE);
+        }
         resetDailyTracking();
         updateChartControlsVisibility(filteredData);
         return;
@@ -1266,16 +1283,16 @@ function setupConfigurationHandlers() {
             exerciseSheetUrl: formData.get('exerciseSheetUrl').trim() || DEFAULT_CONFIG.exerciseSheetUrl
         };
         
-        // Validate required URL
-        if (!config.dataSheetUrl) {
+        // The dashboard needs something to show: a data sheet, a fitness plan, or both
+        if (!config.dataSheetUrl && !config.planMdUrl) {
             form.classList.remove('loading');
-            alert('Data Sheet URL is required!');
+            alert('Enter a Data Sheet URL or a Fitness Plan URL!');
             return;
         }
         
         // Basic URL validation
         try {
-            new URL(config.dataSheetUrl);
+            if (config.dataSheetUrl) new URL(config.dataSheetUrl);
             if (config.planMdUrl) new URL(config.planMdUrl);
             if (config.exerciseSheetUrl) new URL(config.exerciseSheetUrl);
         } catch (error) {
@@ -1463,8 +1480,18 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadFitnessPlan() {
+    const planUrl = getPlanMdUrl();
+    const planSection = document.getElementById('planSection');
+
+    // The plan card sits outside the data dashboard, so it shows whenever a plan URL is configured
+    if (!planUrl) {
+        planSection.style.display = 'none';
+        return;
+    }
+    // An empty value drops the inline "display: none" so the stylesheet's grid layout applies
+    planSection.style.display = '';
+
     try {
-        const planUrl = getPlanMdUrl();
         const response = await fetch(planUrl);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

@@ -23,7 +23,7 @@ A comprehensive fitness and health tracking dashboard that visualizes your perso
 ### First-Time Setup
 When you visit the Health Tracker dashboard for the first time, you will see a configuration modal that allows you to enter your own data source URLs:
 
-1. **Data Sheet URL** (Required): Google Sheets CSV export URL containing daily fitness data
+1. **Data Sheet URL** (Optional): Google Sheets CSV export URL containing daily fitness data. Leave it empty to show only the fitness plan
 2. **Fitness Plan URL** (Optional): Markdown file URL with personalized fitness plans
 3. **Exercise Sheet URL** (Optional): Google Sheets URL with workout routines
 
